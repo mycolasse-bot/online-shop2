@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seller Center - Online Shop</title>
+  <meta name="description" content="Dashboard Seller Center untuk mengelola produk, pesanan, promosi, dan performa toko." />
+  <link rel="stylesheet" href="seller.css" />
+</head>
+<body>
+  <section class="login-gate" id="loginGate" hidden>
+    <form class="login-card" id="sellerLoginForm">
+      <a class="login-brand" href="../index.html" aria-label="Kembali ke Online Shop">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span><b>Online Shop</b><small>Seller Center</small></span>
+      </a>
+      <h1>Masuk ke Seller Center</h1>
+      <p>Gunakan akun admin untuk mengakses pengelolaan produk.</p>
+      <label>Username<input name="username" value="admin" autocomplete="username" required /></label>
+      <label>Password<input name="password" value="admin123" type="password" autocomplete="current-password" required /></label>
+      <button class="primary-btn" type="submit">Masuk</button>
+      <div class="login-error" id="loginError" hidden>Username atau password salah.</div>
+      <a class="back-shop" href="../index.html">← Kembali ke halaman toko</a>
+    </form>
+  </section>
+
+  <div class="seller-app" id="sellerApp" hidden>
+    <aside class="sidebar" id="sidebar">
+      <a class="sidebar-brand" href="../index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span><b>Online Shop</b><small>Seller Center</small></span>
+      </a>
+
+      <nav class="side-nav" aria-label="Navigasi Seller Center">
+        <button class="nav-item active" type="button" data-page="dashboard">
+          <svg viewBox="0 0 24 24"><path d="M4 13h6V4H4zM14 20h6V11h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/></svg>
+          <span>Beranda</span>
+        </button>
+
+        <div class="nav-group open">
+          <button class="nav-group-title" type="button">
+            <span>Pesanan</span><svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <div class="nav-children">
+            <button type="button" data-page="orders" data-order-filter="all">Semua Pesanan</button>
+            <button type="button" data-page="orders" data-order-filter="pending">Perlu Diproses</button>
+            <button type="button" data-page="orders" data-order-filter="processed">Telah Diproses</button>
+            <button type="button" data-page="orders" data-order-filter="cancelled">Pembatalan</button>
+          </div>
+        </div>
+
+        <div class="nav-group open">
+          <button class="nav-group-title" type="button">
+            <span>Produk</span><svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <div class="nav-children">
+            <button type="button" data-page="products">Produk Saya</button>
+            <button type="button" data-page="add-product">Tambah Produk Baru</button>
+            <button type="button" data-page="products" data-product-filter="low">Stok Menipis</button>
+          </div>
+        </div>
+
+        <div class="nav-group open">
+          <button class="nav-group-title" type="button">
+            <span>Pusat Promosi</span><svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <div class="nav-children">
+            <button type="button" data-page="promotions">Pusat Promosi</button>
+            <button type="button" data-page="promotions">Diskon Produk</button>
+            <button type="button" data-page="promotions">Flash Sale Toko</button>
+          </div>
+        </div>
+
+        <button class="nav-item" type="button" data-page="reports">
+          <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+          <span>Laporan</span>
+        </button>
+        <button class="nav-item" type="button" data-page="settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
+          <span>Pengaturan Toko</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="seller-content">
+      <header class="topbar">
+        <button class="menu-button" id="menuButton" type="button" aria-label="Buka menu">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <div class="top-search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input id="globalSearch" type="search" placeholder="Cari produk atau pesanan..." />
+        </div>
+        <div class="top-actions">
+          <a class="store-link" href="../index.html" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M4 10h16l-1-5H5zM6 10v9h12v-9M9 19v-5h6v5"/></svg>
+            <span>Lihat Toko</span>
+          </a>
+          <button class="icon-button" type="button" aria-label="Notifikasi">
+            <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i>2</i>
+          </button>
+          <div class="profile-menu">
+            <button class="profile-button" id="profileButton" type="button">
+              <span class="avatar">A</span><span><b>Admin Toko</b><small>Seller</small></span>
+              <svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg>
+            </button>
+            <div class="profile-dropdown" id="profileDropdown" hidden>
+              <button type="button" data-page="settings">Pengaturan akun</button>
+              <button type="button" id="logoutButton">Keluar</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="main-panel">
+        <section class="page active" data-page-panel="dashboard">
+          <div class="page-heading">
+            <div><h1>Beranda Seller</h1><p>Ringkasan aktivitas dan performa toko hari ini.</p></div>
+            <span class="updated-label" id="updatedLabel">Diperbarui sekarang</span>
+          </div>
+
+          <section class="status-strip" aria-label="Ringkasan status toko">
+            <button type="button" data-page="orders" data-order-filter="pending"><strong id="pendingCount">0</strong><span>Pengiriman Perlu Diproses</span></button>
+            <button type="button" data-page="orders" data-order-filter="processed"><strong id="processedCount">0</strong><span>Pengiriman Telah Diproses</span></button>
+            <button type="button" data-page="orders" data-order-filter="cancelled"><strong id="cancelledCount">0</strong><span>Pengembalian/Pembatalan</span></button>
+            <button type="button" data-page="products" data-product-filter="inactive"><strong id="inactiveCount">0</strong><span>Produk Dinonaktifkan</span></button>
+            <button type="button" data-page="products" data-product-filter="low"><strong id="lowStockCount">0</strong><span>Stok Produk Menipis</span></button>
+          </section>
+
+          <section class="content-card performance-card">
+            <div class="card-title-row">
+              <div><h2>Performa Toko</h2><span>Perubahan data dibandingkan periode sebelumnya</span></div>
+              <button class="text-link" type="button" data-page="reports">Lainnya <span>›</span></button>
+            </div>
+            <div class="metric-grid">
+              <article><span>Penjualan <i title="Total nilai pesanan">?</i></span><strong id="salesMetric">Rp0</strong><small class="down">▼ 5,90%</small></article>
+              <article><span>Total Pengunjung <i title="Estimasi kunjungan">?</i></span><strong id="visitorMetric">407</strong><small class="down">▼ 6,86%</small></article>
+              <article><span>Jumlah Produk Diklik <i title="Estimasi klik produk">?</i></span><strong id="clickMetric">129</strong><small class="down">▼ 29,51%</small></article>
+              <article><span>Pesanan <i title="Jumlah pesanan">?</i></span><strong id="orderMetric">0</strong><small class="down">▼ 25,00%</small></article>
+              <article><span>Tingkat Konversi Pesanan <i title="Pesanan dibagi pengunjung">?</i></span><strong id="conversionMetric">0%</strong><small class="up">▲ 0,28%</small></article>
+            </div>
+
+            <div class="subsection-title">
+              <div><h3>Pengiriman Kilat</h3><span>Diperbarui berdasarkan metrik terakhir.</span></div>
+              <button class="text-link" type="button" data-page="orders">Lainnya <span>›</span></button>
+            </div>
+            <div class="metric-grid secondary">
+              <article><span>Penjualan</span><strong id="fastSalesMetric">Rp0</strong><small class="up">▲ 51,21% vs Kemarin</small></article>
+              <article><span>Pesanan</span><strong id="fastOrdersMetric">0</strong><small>—</small></article>
+              <article><span>Rata-rata Durasi Terima Pesanan</span><strong>3,03 Hari</strong><small class="up">0,40 hari lebih cepat</small></article>
+              <article><span>Jumlah Produk Dilihat</span><strong>1.785</strong><small>—</small></article>
+              <article><span>Pembeli Antarkota</span><strong>276</strong><small>—</small></article>
+            </div>
+            <div class="shipping-tip">
+              <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7zM6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+              <span>Percepat pengiriman untuk meningkatkan kepuasan pembeli dan potensi penjualan.</span>
+              <button type="button" data-page="orders" data-order-filter="pending">Kirim Sekarang</button>
+            </div>
+          </section>
+
+          <div class="dashboard-columns">
+            <section class="content-card compact-card">
+              <div class="card-title-row"><div><h2>Produk Terlaris</h2><span>Berdasarkan jumlah terjual</span></div><button class="text-link" type="button" data-page="products">Lihat Produk</button></div>
+              <div class="best-products" id="bestProducts"></div>
+            </section>
+            <section class="content-card compact-card">
+              <div class="card-title-row"><div><h2>Aktivitas Penting</h2><span>Yang perlu segera ditangani</span></div></div>
+              <div class="activity-list" id="activityList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="page" data-page-panel="orders">
+          <div class="page-heading"><div><h1>Pesanan</h1><p>Kelola dan perbarui status pesanan pelanggan.</p></div></div>
+          <section class="content-card">
+            <div class="toolbar">
+              <div class="filter-tabs" id="orderTabs">
+                <button class="active" type="button" data-order-tab="all">Semua</button>
+                <button type="button" data-order-tab="pending">Perlu Diproses</button>
+                <button type="button" data-order-tab="processed">Telah Diproses</button>
+                <button type="button" data-order-tab="cancelled">Pembatalan</button>
+              </div>
+            </div>
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>ID Pesanan</th><th>Pelanggan</th><th>Total</th><th>Pembayaran</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="orderTableBody"></tbody></table></div>
+            <div class="empty-state" id="orderEmpty" hidden>Belum ada pesanan pada kategori ini.</div>
+          </section>
+        </section>
+
+        <section class="page" data-page-panel="products">
+          <div class="page-heading">
+            <div><h1>Produk Saya</h1><p>Kelola informasi, stok, harga, dan status produk.</p></div>
+            <button class="primary-btn small" type="button" data-page="add-product">+ Tambah Produk</button>
+          </div>
+          <section class="content-card">
+            <div class="toolbar product-toolbar">
+              <div class="inline-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg><input id="productSearch" type="search" placeholder="Cari nama produk..." /></div>
+              <select id="productStatusFilter"><option value="all">Semua Status</option><option value="active">Aktif</option><option value="inactive">Nonaktif</option><option value="low">Stok Menipis</option></select>
+              <span class="result-count" id="productResultCount">0 produk</span>
+            </div>
+            <div class="table-wrap"><table class="data-table product-table"><thead><tr><th>Produk</th><th>Harga</th><th>Stok</th><th>Terjual</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="productTableBody"></tbody></table></div>
+            <div class="empty-state" id="productEmpty" hidden>Produk tidak ditemukan.</div>
+          </section>
+        </section>
+
+        <section class="page" data-page-panel="add-product">
+          <div class="page-heading"><div><h1 id="productFormTitle">Tambah Produk Baru</h1><p>Lengkapi informasi produk sebelum ditampilkan di toko.</p></div></div>
+          <form class="content-card product-form" id="productForm">
+            <input type="hidden" name="id" />
+            <div class="form-section"><h2>Informasi Dasar</h2><div class="form-grid">
+              <label class="wide">Nama Produk<input name="title" maxlength="100" placeholder="Contoh: Luna Satin Midi Dress" required /></label>
+              <label>Kategori<input name="category" placeholder="Fashion" required /></label>
+              <label>Status<select name="active"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></label>
+              <label class="wide">Deskripsi<textarea name="description" rows="4" placeholder="Jelaskan keunggulan dan detail produk"></textarea></label>
+            </div></div>
+            <div class="form-section"><h2>Harga dan Stok</h2><div class="form-grid three">
+              <label>Harga (Rp)<input name="price" type="number" min="0" step="1000" required /></label>
+              <label>Diskon (%)<input name="discount" type="number" min="0" max="90" value="0" /></label>
+              <label>Stok<input name="stock" type="number" min="0" value="1" required /></label>
+            </div></div>
+            <div class="form-section"><h2>Foto Produk</h2><div class="form-grid">
+              <label class="wide">URL atau path gambar<input name="image" placeholder="assets/photos/produk.jpg atau https://..." /></label>
+              <div class="image-preview" id="imagePreview"><span>Pratinjau gambar</span></div>
+            </div></div>
+            <div class="form-actions"><button class="secondary-btn" type="button" data-page="products">Batal</button><button class="primary-btn" type="submit">Simpan Produk</button></div>
+          </form>
+        </section>
+
+        <section class="page" data-page-panel="promotions">
+          <div class="page-heading"><div><h1>Pusat Promosi</h1><p>Atur diskon dan kampanye toko.</p></div></div>
+          <div class="promo-grid">
+            <article class="content-card promo-option"><span class="promo-icon">%</span><div><h2>Diskon Produk</h2><p>Buat potongan harga untuk produk pilihan.</p></div><button type="button" data-page="products">Kelola Produk</button></article>
+            <article class="content-card promo-option"><span class="promo-icon">⚡</span><div><h2>Flash Sale Toko</h2><p>Tampilkan produk unggulan dalam promo berbatas waktu.</p></div><button type="button">Buat Promo</button></article>
+            <article class="content-card promo-option"><span class="promo-icon">🎟</span><div><h2>Voucher Toko</h2><p>Berikan voucher belanja untuk meningkatkan konversi.</p></div><button type="button">Buat Voucher</button></article>
+          </div>
+        </section>
+
+        <section class="page" data-page-panel="reports">
+          <div class="page-heading"><div><h1>Laporan Penjualan</h1><p>Analisis ringkas performa toko dan produk.</p></div></div>
+          <div class="report-grid">
+            <article class="content-card report-stat"><span>Total Pendapatan</span><strong id="reportRevenue">Rp0</strong><small>Seluruh pesanan tersimpan</small></article>
+            <article class="content-card report-stat"><span>Total Pesanan</span><strong id="reportOrders">0</strong><small>Pesanan masuk</small></article>
+            <article class="content-card report-stat"><span>Produk Aktif</span><strong id="reportProducts">0</strong><small>Siap dijual</small></article>
+          </div>
+          <section class="content-card chart-card"><div class="card-title-row"><div><h2>Tren Penjualan</h2><span>Simulasi tujuh hari terakhir</span></div></div><div class="bar-chart" id="barChart"></div></section>
+        </section>
+
+        <section class="page" data-page-panel="settings">
+          <div class="page-heading"><div><h1>Pengaturan Toko</h1><p>Atur identitas toko dan tampilan Seller Center.</p></div></div>
+          <form class="content-card settings-form" id="settingsForm">
+            <label>Nama Toko<input name="storeName" value="Online Shop" /></label>
+            <label>Email Toko<input name="storeEmail" type="email" value="seller@namadomain.com" /></label>
+            <label class="wide">Alamat Toko<textarea name="storeAddress" rows="3">Indonesia</textarea></label>
+            <div class="theme-setting wide"><span>Thema Website</span><div id="themeDots">
+              <button type="button" data-theme-choice="red" title="Red #EE4D2D"></button>
+              <button type="button" data-theme-choice="orange" title="Orange #F68D3C"></button>
+              <button type="button" data-theme-choice="blue" title="Blue #4078C8"></button>
+              <button type="button" data-theme-choice="teal" title="Teal #3E9F8B"></button>
+              <button type="button" data-theme-choice="green" title="Green #4F9F45"></button>
+              <button type="button" data-theme-choice="blue-grey" title="Blue-grey #6C7480"></button>
+            </div></div>
+            <div class="form-actions wide"><button class="primary-btn" type="submit">Simpan Pengaturan</button></div>
+          </form>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="../store-data.js"></script>
+  <script src="seller.js"></script>
+</body>
+</html>
