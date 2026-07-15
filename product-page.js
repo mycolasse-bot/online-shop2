@@ -1,4 +1,4 @@
-const DATA = window.StoreData;
+const DATA = window.StoreData || { products: [], productPhotos: { dress: ["assets/photos/dress-1.jpg"] }, shippingOptions: [], paymentMethods: [], categories: [] };
 const PRODUCTS_KEY = "fashion_products_v4";
 const CART_KEY = "fashion_cart_v3";
 const ORDERS_KEY = "fashion_orders_v3";
@@ -100,7 +100,11 @@ function read(key, fallback) {
 }
 
 function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn("Penyimpanan lokal tidak tersedia:", error);
+  }
 }
 
 function escapeHtml(value) {
@@ -122,7 +126,8 @@ function storeCityLabel() {
 }
 
 function productPhotoKey(product) {
-  const text = `${product.id} ${product.category} ${product.title}`.toLowerCase();
+  const safeProduct = product && typeof product === "object" ? product : {};
+  const text = `${safeProduct.id || ""} ${safeProduct.category || ""} ${safeProduct.title || ""}`.toLowerCase();
   if (text.includes("blouse")) return "blouse";
   if (text.includes("outer") || text.includes("linen")) return "outer";
   if (text.includes("tas") || text.includes("bag")) return "bag";
@@ -142,13 +147,15 @@ function normalizeProductVariants(product) {
 }
 
 function hydrateProduct(product) {
+  if (!product || typeof product !== "object") return null;
   const key = productPhotoKey(product);
-  const sourcePhotos = product.photos?.length ? product.photos : DATA.productPhotos[key];
-  const photos = sourcePhotos.slice(0, MAX_PRODUCT_SLIDES);
+  const defaultPhotos = DATA.productPhotos?.[key] || DATA.productPhotos?.dress || ["assets/photos/dress-1.jpg"];
+  const sourcePhotos = Array.isArray(product.photos) && product.photos.length ? product.photos : defaultPhotos;
+  const photos = sourcePhotos.slice(0, MAX_PRODUCT_SLIDES).filter(Boolean);
   return {
     ...product,
-    photos,
-    image: product.image || photos[0],
+    photos: photos.length ? photos : ["assets/photos/dress-1.jpg"],
+    image: product.image || photos[0] || "assets/photos/dress-1.jpg",
     sold: product.sold ?? 0,
     stock: product.stock ?? 25,
     rating: product.rating ?? 4.8,
@@ -161,7 +168,16 @@ function hydrateProduct(product) {
 }
 
 function loadProducts() {
-  return read(PRODUCTS_KEY, DATA.products).map(hydrateProduct);
+  const defaults = Array.isArray(DATA.products) ? DATA.products : [];
+  const savedProducts = read(PRODUCTS_KEY, defaults);
+  const sourceProducts = Array.isArray(savedProducts) && savedProducts.length ? savedProducts : defaults;
+  const products = sourceProducts
+    .filter((product) => product && typeof product === "object")
+    .map((product) => {
+      try { return hydrateProduct(product); } catch (error) { console.warn("Produk dilewati karena data rusak:", error); return null; }
+    })
+    .filter(Boolean);
+  return products.length ? products : defaults.map((product) => hydrateProduct(product)).filter(Boolean);
 }
 
 function autoProductVariants(product) {
@@ -204,11 +220,13 @@ function finalPrice(product, variantName = state.variant) {
 }
 
 function productVariantOptions(product) {
+  if (!product || typeof product !== "object") return [];
+  const safePhotos = Array.isArray(product.photos) && product.photos.length ? product.photos : [product.image || "assets/photos/dress-1.jpg"];
   const manualVariants = normalizeProductVariants(product);
   if (manualVariants.length) {
     return manualVariants.map((variant, index) => ({
       name: variant.name,
-      image: product.photos[index % product.photos.length] || product.image,
+      image: safePhotos[index % safePhotos.length] || product.image || "assets/photos/dress-1.jpg",
       price: variant.price,
       finalPrice: finalPrice(product, variant.name)
     }));
@@ -217,7 +235,7 @@ function productVariantOptions(product) {
   const variants = autoProductVariants(product);
   return variants.map((variant, index) => ({
     name: variant,
-    image: product.photos[index % product.photos.length] || product.image,
+    image: safePhotos[index % safePhotos.length] || product.image || "assets/photos/dress-1.jpg",
     price: variantBasePrice(product, variant),
     finalPrice: finalPrice(product, variant)
   }));
@@ -247,6 +265,7 @@ function currentProduct() {
 }
 
 function notify(message) {
+  if (!els.toast) return;
   els.toast.textContent = message;
   els.toast.classList.add("show");
   window.clearTimeout(notify.timer);
@@ -254,12 +273,16 @@ function notify(message) {
 }
 
 function renderSelectOptions() {
-  els.shippingSelect.innerHTML = state.shippingOptions
-    .map((item) => `<option value="${escapeHtml(item.name)}|${item.price}">${escapeHtml(item.name)} - ${rupiah.format(item.price)}</option>`)
-    .join("");
-  els.paymentSelect.innerHTML = state.paymentMethods
-    .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`)
-    .join("");
+  if (els.shippingSelect) {
+    els.shippingSelect.innerHTML = state.shippingOptions
+      .map((item) => `<option value="${escapeHtml(item.name)}|${item.price}">${escapeHtml(item.name)} - ${rupiah.format(item.price)}</option>`)
+      .join("");
+  }
+  if (els.paymentSelect) {
+    els.paymentSelect.innerHTML = state.paymentMethods
+      .map((item) => `<option value="${escapeHtml(item.name)}">${escapeHtml(item.name)}</option>`)
+      .join("");
+  }
   renderPaymentGuide();
 }
 
@@ -293,7 +316,9 @@ function renderProduct() {
   }
 
   const hasDiscount = Number(product.discount) > 0;
-  const activePhoto = product.photos[state.activePhoto] || product.image;
+  const productPhotos = Array.isArray(product.photos) && product.photos.length ? product.photos : [product.image || "assets/photos/dress-1.jpg"];
+  if (state.activePhoto >= productPhotos.length) state.activePhoto = 0;
+  const activePhoto = productPhotos[state.activePhoto] || product.image || "assets/photos/dress-1.jpg";
   const variants = productVariantOptions(product);
   const selectedVariant = state.variant || variants[0]?.name || product.color || "Default";
   state.variant = selectedVariant;
@@ -307,12 +332,10 @@ function renderProduct() {
     <div class="detail-gallery shopee-gallery">
       <div class="detail-stage">
         <img class="detail-main-img" src="${activePhoto}" alt="${escapeHtml(product.title)} foto ${state.activePhoto + 1}" />
-        <button class="gallery-arrow prev" type="button" data-slide="prev" aria-label="Foto sebelumnya">‹</button>
-        <button class="gallery-arrow next" type="button" data-slide="next" aria-label="Foto berikutnya">›</button>
-        <span class="gallery-count">${state.activePhoto + 1}/${product.photos.length}</span>
+        <span class="gallery-count">${state.activePhoto + 1}/${productPhotos.length}</span>
       </div>
       <div class="thumb-grid" aria-label="Foto produk">
-        ${product.photos
+        ${productPhotos
           .map(
             (photo, index) => `
               <button class="thumb-button ${index === state.activePhoto ? "active" : ""}" type="button" data-photo="${index}" aria-label="Foto ${index + 1}">
@@ -406,7 +429,7 @@ function renderProduct() {
           </svg>
           Masukkan Keranjang
         </button>
-        <a class="primary-button shopee-buy-button" href="#checkout">Beli Sekarang</a>
+        <button class="primary-button shopee-buy-button" type="button" data-buy-now>Beli Sekarang</button>
       </div>
     </div>
 
@@ -504,49 +527,61 @@ function closeDrawer(drawer) {
   drawer.setAttribute("aria-hidden", "true");
 }
 
-els.productDetail.addEventListener("click", (event) => {
-  const photoButton = event.target.closest("[data-photo]");
-  const slideButton = event.target.closest("[data-slide]");
-  const qtyButton = event.target.closest("[data-qty]");
-  const variantButton = event.target.closest("[data-variant]");
-  const addButton = event.target.closest("[data-add-cart]");
+if (els.productDetail) {
+  els.productDetail.addEventListener("click", (event) => {
+    const photoButton = event.target.closest("[data-photo]");
+    const slideButton = event.target.closest("[data-slide]");
+    const qtyButton = event.target.closest("[data-qty]");
+    const variantButton = event.target.closest("[data-variant]");
+    const addButton = event.target.closest("[data-add-cart]");
+    const buyNowButton = event.target.closest("[data-buy-now]");
 
-  if (photoButton) {
-    state.activePhoto = Number(photoButton.dataset.photo);
-    renderProduct();
-  }
+    if (photoButton) {
+      state.activePhoto = Number(photoButton.dataset.photo);
+      renderProduct();
+      return;
+    }
 
-  if (slideButton) {
-    const total = currentProduct().photos.length;
-    state.activePhoto = slideButton.dataset.slide === "next"
-      ? (state.activePhoto + 1) % total
-      : (state.activePhoto - 1 + total) % total;
-    renderProduct();
-  }
+    if (slideButton) {
+      const total = currentProduct().photos.length;
+      state.activePhoto = slideButton.dataset.slide === "next"
+        ? (state.activePhoto + 1) % total
+        : (state.activePhoto - 1 + total) % total;
+      renderProduct();
+      return;
+    }
 
-  if (qtyButton) {
-    state.qty = qtyButton.dataset.qty === "plus" ? state.qty + 1 : Math.max(1, state.qty - 1);
-    renderProduct();
-  }
+    if (qtyButton) {
+      state.qty = qtyButton.dataset.qty === "plus" ? state.qty + 1 : Math.max(1, state.qty - 1);
+      renderProduct();
+      return;
+    }
 
-  if (variantButton) {
-    state.variant = variantButton.dataset.variant;
-    renderProduct();
-  }
+    if (variantButton) {
+      state.variant = variantButton.dataset.variant;
+      renderProduct();
+      return;
+    }
 
-  if (addButton) {
-    addToCart(currentProduct().id, state.qty);
-  }
-});
+    if (addButton) {
+      addToCart(currentProduct().id, state.qty);
+      return;
+    }
 
-els.productDetail.addEventListener("input", (event) => {
+    if (buyNowButton) {
+      createCurrentProductOrder();
+    }
+  });
+}
+
+els.productDetail?.addEventListener("input", (event) => {
   if (event.target.id === "qtyInput") {
     state.qty = Math.max(1, Number(event.target.value.replace(/\D/g, "")) || 1);
     updateProductSubtotal();
   }
 });
 
-els.productDetail.addEventListener("change", (event) => {
+els.productDetail?.addEventListener("change", (event) => {
   if (event.target.id !== "variantSelect") return;
   state.variant = event.target.value;
 });
@@ -784,6 +819,8 @@ function openAddressModal() {
     state.addressDraft.districtCode = saved.districtCode || "";
     state.addressDraft.postal = saved.postal || "";
     state.addressDraft.tag = saved.tag || "Rumah";
+  } else {
+    resetBuyerAddressDraft();
   }
   document.querySelectorAll("[data-address-tag]").forEach((button) => {
     button.classList.toggle("active", button.dataset.addressTag === state.addressDraft.tag);
@@ -801,23 +838,63 @@ function closeAddressModal() {
   document.body.classList.remove("modal-open");
 }
 
+function buyerAddressText(address = state.address) {
+  if (!address) return "";
+  return [
+    address.name && address.phone ? `${address.name} · ${address.phone}` : address.name || address.phone,
+    address.street,
+    [address.district, address.city, address.province, address.postal].filter(Boolean).join(", "),
+    address.tag ? `Label: ${address.tag}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+function clearBuyerAddressFields() {
+  if (els.buyerNameField) els.buyerNameField.value = "";
+  if (els.buyerPhoneField) els.buyerPhoneField.value = "";
+  if (els.buyerStreetField) els.buyerStreetField.value = "";
+  if (els.buyerDistrictField) els.buyerDistrictField.value = "";
+  if (els.buyerCityField) els.buyerCityField.value = "";
+  if (els.buyerProvinceField) els.buyerProvinceField.value = "";
+  if (els.buyerPostalField) els.buyerPostalField.value = "";
+  if (els.buyerAddressTagField) els.buyerAddressTagField.value = "";
+}
+
+function resetBuyerAddressDraft() {
+  state.addressDraft = {
+    step: "province",
+    province: "",
+    provinceCode: "",
+    city: "",
+    cityCode: "",
+    district: "",
+    districtCode: "",
+    postal: "",
+    tag: "Rumah"
+  };
+  if (els.addressName) els.addressName.value = "";
+  if (els.addressPhone) els.addressPhone.value = "";
+  if (els.addressStreet) els.addressStreet.value = "";
+  updateAddressSearch();
+}
+
 function updateAddressFields() {
   const address = state.address;
   if (!address) {
+    clearBuyerAddressFields();
     if (els.addressPreview) {
       els.addressPreview.classList.add("empty");
-      els.addressPreview.textContent = "Belum ada alamat. Klik Alamat Baru untuk mengisi alamat pembeli.";
+      els.addressPreview.innerHTML = "Belum ada alamat. Klik Alamat Baru untuk mengisi alamat pembeli.";
     }
     return;
   }
 
-  els.buyerNameField.value = address.name || "";
-  els.buyerPhoneField.value = address.phone || "";
-  els.buyerStreetField.value = address.street || "";
-  els.buyerDistrictField.value = address.district || "";
-  els.buyerCityField.value = address.city || "";
-  els.buyerProvinceField.value = address.province || "";
-  els.buyerPostalField.value = address.postal || "";
+  if (els.buyerNameField) els.buyerNameField.value = address.name || "";
+  if (els.buyerPhoneField) els.buyerPhoneField.value = address.phone || "";
+  if (els.buyerStreetField) els.buyerStreetField.value = address.street || "";
+  if (els.buyerDistrictField) els.buyerDistrictField.value = address.district || "";
+  if (els.buyerCityField) els.buyerCityField.value = address.city || "";
+  if (els.buyerProvinceField) els.buyerProvinceField.value = address.province || "";
+  if (els.buyerPostalField) els.buyerPostalField.value = address.postal || "";
   if (els.buyerAddressTagField) els.buyerAddressTagField.value = address.tag || "";
 
   if (els.addressPreview) {
@@ -827,8 +904,56 @@ function updateAddressFields() {
       <span>${escapeHtml(address.street)}</span>
       <span>${escapeHtml(address.district)}, ${escapeHtml(address.city)}, ${escapeHtml(address.province)} ${escapeHtml(address.postal)}</span>
       <small>${escapeHtml(address.tag)}</small>
+      <div class="address-card-actions">
+        <button type="button" data-view-buyer-address>Lihat</button>
+        <button type="button" data-edit-buyer-address>Edit</button>
+        <button class="danger" type="button" data-delete-buyer-address>Hapus</button>
+      </div>
     `;
   }
+}
+
+function closeBuyerAddressPopup() {
+  const popup = document.querySelector("#buyerAddressDetailPopup");
+  if (!popup) return;
+  popup.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+function viewBuyerAddress() {
+  if (!state.address) return;
+  let popup = document.querySelector("#buyerAddressDetailPopup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "buyerAddressDetailPopup";
+    popup.className = "address-detail-backdrop";
+    popup.hidden = true;
+    popup.innerHTML = `
+      <div class="address-detail-popup" role="dialog" aria-modal="true" aria-labelledby="buyerAddressDetailTitle">
+        <button class="address-detail-close" type="button" data-close-buyer-address-popup aria-label="Tutup detail alamat">&times;</button>
+        <h2 id="buyerAddressDetailTitle">Detail Alamat Pembeli</h2>
+        <div class="address-detail-content" data-buyer-address-detail></div>
+        <div class="address-detail-actions">
+          <button class="secondary-button" type="button" data-popup-edit-buyer-address>Edit</button>
+          <button class="danger-button" type="button" data-popup-delete-buyer-address>Hapus</button>
+        </div>
+      </div>`;
+    document.body.appendChild(popup);
+  }
+  const content = popup.querySelector("[data-buyer-address-detail]");
+  content.innerHTML = buyerAddressText(state.address).split("\n").filter(Boolean).map((line) => `<p>${escapeHtml(line)}</p>`).join("");
+  popup.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function deleteBuyerAddress() {
+  if (!state.address) return;
+  if (!window.confirm("Hapus alamat pembeli ini?")) return;
+  state.address = null;
+  localStorage.removeItem(ADDRESS_KEY);
+  resetBuyerAddressDraft();
+  updateAddressFields();
+  notify("Alamat pembeli dihapus.");
 }
 
 function saveAddressFromModal() {
@@ -864,21 +989,34 @@ document.addEventListener("click", (event) => {
   const minusButton = event.target.closest("[data-minus-cart]");
   const removeButton = event.target.closest("[data-remove-cart]");
   const themeButton = event.target.closest("[data-theme-choice]");
+  const viewBuyerAddressButton = event.target.closest("[data-view-buyer-address]");
+  const editBuyerAddressButton = event.target.closest("[data-edit-buyer-address]");
+  const deleteBuyerAddressButton = event.target.closest("[data-delete-buyer-address]");
+  const closeBuyerPopupButton = event.target.closest("[data-close-buyer-address-popup]");
+  const popupEditBuyerAddress = event.target.closest("[data-popup-edit-buyer-address]");
+  const popupDeleteBuyerAddress = event.target.closest("[data-popup-delete-buyer-address]");
+  const buyerAddressPopup = document.querySelector("#buyerAddressDetailPopup");
 
   if (plusButton) updateCart(Number(plusButton.dataset.plusCart), "plus");
   if (minusButton) updateCart(Number(minusButton.dataset.minusCart), "minus");
   if (removeButton) updateCart(Number(removeButton.dataset.removeCart), "remove");
   if (themeButton) applyTheme(themeButton.dataset.themeChoice);
+  if (viewBuyerAddressButton) viewBuyerAddress();
+  if (editBuyerAddressButton) openAddressModal();
+  if (deleteBuyerAddressButton) deleteBuyerAddress();
+  if (closeBuyerPopupButton || event.target === buyerAddressPopup) closeBuyerAddressPopup();
+  if (popupEditBuyerAddress) { closeBuyerAddressPopup(); openAddressModal(); }
+  if (popupDeleteBuyerAddress) { closeBuyerAddressPopup(); deleteBuyerAddress(); }
 });
 
-els.cartOpen.addEventListener("click", () => openDrawer(els.cartDrawer));
-els.cartClose.addEventListener("click", () => closeDrawer(els.cartDrawer));
-els.checkoutJump.addEventListener("click", () => closeDrawer(els.cartDrawer));
-els.paymentSelect.addEventListener("change", renderPaymentGuide);
+els.cartOpen?.addEventListener("click", () => openDrawer(els.cartDrawer));
+els.cartClose?.addEventListener("click", () => closeDrawer(els.cartDrawer));
+els.checkoutJump?.addEventListener("click", () => { closeDrawer(els.cartDrawer); createCartOrder(); });
+els.paymentSelect?.addEventListener("change", renderPaymentGuide);
 
-els.detailSearchForm.addEventListener("submit", (event) => {
+els.detailSearchForm?.addEventListener("submit", (event) => {
   event.preventDefault();
-  const search = encodeURIComponent(els.detailSearchInput.value.trim());
+  const search = encodeURIComponent(els.detailSearchInput?.value.trim() || "");
   window.location.href = search ? `index.html?q=${search}#produk` : "index.html#produk";
 });
 
@@ -907,40 +1045,22 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && els.addressModal && !els.addressModal.hidden) closeAddressModal();
 });
 
-els.buyForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!state.address) {
-    notify("Isi alamat pengiriman terlebih dahulu.");
-    openAddressModal();
-    return;
-  }
+function openOrderPayment(order) {
+  state.orders.push(order);
+  write(ORDERS_KEY, state.orders);
+  notify("Membuka rincian pembelian produk.");
+  window.location.href = `order-payment.html?order=${encodeURIComponent(order.id)}`;
+}
 
+function createCurrentProductOrder() {
   const product = currentProduct();
-  const form = new FormData(event.currentTarget);
-  const [shippingName, shippingCost] = form.get("shipping").split("|");
-  const paymentMethod = getPaymentMethod(form.get("payment"));
+  if (!product) { notify("Produk belum tersedia."); return; }
   const selectedVariant = state.variant || productVariants(product)[0];
   const selectedProductPrice = finalPrice(product, selectedVariant);
   const productTotal = selectedProductPrice * state.qty;
-  const address = [
-    form.get("street"),
-    form.get("district"),
-    form.get("city"),
-    form.get("province"),
-    form.get("postal")
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const order = {
+  openOrderPayment({
     id: `ORD-${Date.now()}`,
-    name: form.get("name"),
-    phone: form.get("phone"),
-    address,
-    shippingName,
-    shippingCost: Number(shippingCost),
-    payment: form.get("payment"),
-    paymentDetail: paymentMethod ? `${paymentMethod.type}: ${paymentMethod.account}` : "",
-    status: "Menunggu pembayaran",
+    status: "Menunggu rincian pembelian",
     items: [
       {
         id: product.id,
@@ -950,19 +1070,61 @@ els.buyForm.addEventListener("submit", (event) => {
         price: selectedProductPrice
       }
     ],
-    total: productTotal + Number(shippingCost),
+    productTotal,
+    shippingName: "",
+    shippingCost: 0,
+    payment: "",
+    paymentDetail: "",
+    total: productTotal,
+    productImage: product.photos?.[0] || product.image || "",
     createdAt: new Date().toISOString()
-  };
+  });
+}
 
-  state.orders.push(order);
-  write(ORDERS_KEY, state.orders);
-  els.paymentResult.hidden = false;
-  els.paymentResult.textContent = paymentText(order);
-  notify("Pesanan dibuat dan masuk ke admin.");
-});
+function createCartOrder() {
+  if (!state.cart.length) {
+    notify("Keranjang masih kosong.");
+    return;
+  }
+  const items = state.cart.map((item) => {
+    const product = state.products.find((entry) => entry && entry.id === item.id);
+    if (!product) return null;
+    const variant = item.variant || productVariants(product)[0];
+    return {
+      id: product.id,
+      title: product.title,
+      variant,
+      qty: item.qty,
+      price: finalPrice(product, variant)
+    };
+  }).filter((item) => item && item.id);
+  const productTotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  if (!items.length) { notify("Produk di keranjang tidak tersedia."); return; }
+  const firstProduct = state.products.find((entry) => entry && entry.id === items[0]?.id);
+  openOrderPayment({
+    id: `ORD-${Date.now()}`,
+    status: "Menunggu rincian pembelian",
+    items,
+    productTotal,
+    shippingName: "",
+    shippingCost: 0,
+    payment: "",
+    paymentDetail: "",
+    total: productTotal,
+    productImage: firstProduct?.photos?.[0] || firstProduct?.image || "",
+    createdAt: new Date().toISOString()
+  });
+}
 
-applyTheme(localStorage.getItem(THEME_KEY));
-updateAddressFields();
-renderSelectOptions();
-renderProduct();
-renderCart();
+try {
+  applyTheme(localStorage.getItem(THEME_KEY));
+  updateAddressFields();
+  renderSelectOptions();
+  renderProduct();
+  renderCart();
+} catch (error) {
+  console.error("Halaman produk gagal dimuat:", error);
+  if (els.productDetail) {
+    els.productDetail.innerHTML = `<div class="empty-state"><h2>Halaman produk gagal dimuat</h2><p>Silakan muat ulang halaman atau kembali ke toko.</p><a class="primary-button" href="index.html#produk">Kembali ke Produk</a></div>`;
+  }
+}

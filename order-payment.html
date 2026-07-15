@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rincian Pembayaran - Online Shop</title>
+    <meta name="description" content="Rincian pembelian, ongkir, total pembayaran, upload bukti pembayaran, dan konfirmasi pesanan." />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="market-header">
+      <div class="market-top">
+        <a href="index.html">Online Shop</a>
+        <span>Rincian Pembayaran</span>
+        <span>Konfirmasi Pesanan</span>
+      </div>
+      <div class="market-main">
+        <a class="market-brand" href="index.html" aria-label="Online Shop">
+          <span class="bag-mark">O</span>
+          <span>Online Shop</span>
+        </a>
+        <form class="search-box" id="paymentSearchForm">
+          <input id="paymentSearchInput" type="search" placeholder="Cari produk lain di toko..." />
+          <button class="search-submit" type="submit" aria-label="Cari">
+            <svg class="search-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
+          </button>
+        </form>
+        <a class="cart-link cart-with-icon" href="product.html" aria-label="Kembali ke produk">
+          <svg class="nav-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="M12 5l7 7-7 7"></path>
+          </svg>
+          <span class="nav-label">Produk</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="page-shell payment-page-shell">
+      <section class="payment-detail-page" id="paymentPage">
+        <div class="payment-page-head">
+          <div>
+            <p class="eyebrow">Checkout selesai</p>
+            <h1>Rincian Pembelian Produk</h1>
+            <span id="orderStatusText">Menunggu pembayaran</span>
+          </div>
+          <a class="store-return-link" href="index.html">Kembali ke Toko</a>
+        </div>
+
+        <div class="payment-layout-grid payment-checkout-flow payment-three-block-flow">
+          <div class="payment-summary-card payment-main-card payment-order-block">
+            <h2>Rincian Produk</h2>
+            <div class="payment-product-row" id="paymentProductRow"></div>
+
+            <div class="payment-line-list payment-subtotal-list compact-payment-lines">
+              <div><span>Subtotal Produk</span><strong id="paymentProductTotal">Rp0</strong></div>
+            </div>
+
+            <label class="payment-field-label payment-expedition-field">
+              Pilih Ekspedisi
+              <select id="orderShippingSelect" required></select>
+            </label>
+            <div class="shipping-address-required" id="shippingAddressNotice" hidden>Isi Alamat</div>
+
+            <div class="payment-line-list payment-total-inline">
+              <div class="grand-total"><span>Total</span><strong id="paymentGrandTotal">Rp0</strong></div>
+            </div>
+
+            <div class="checkout-address-card payment-address-card payment-address-inside-block">
+              <div class="address-card-head">
+                <div>
+                  <strong>Alamat Pengiriman</strong>
+                  <span>Pilih atau lengkapi alamat pembeli untuk mengaktifkan ekspedisi.</span>
+                </div>
+                <button class="address-edit-button" id="addressOpen" type="button">+ Alamat Baru</button>
+              </div>
+              <div class="address-preview empty" id="addressPreview">Belum ada alamat. Klik Alamat Baru untuk mengisi alamat pembeli.</div>
+            </div>
+          </div>
+
+          <div class="payment-summary-card payment-main-card payment-method-block" aria-label="Metode Pembayaran">
+            <label class="payment-field-label">
+              Metode Pembayaran
+              <select id="orderPaymentSelect" required></select>
+            </label>
+            <div class="payment-number-box payment-account-box" id="paymentNumberBox"></div>
+            <div class="payment-guide" id="paymentGuide"></div>
+          </div>
+
+          <div class="payment-summary-card payment-main-card payment-upload-block" aria-label="Upload Bukti Pembayaran">
+            <label class="proof-upload-box">
+              Upload Bukti Pembayaran
+              <input id="paymentProof" type="file" accept="image/*,.pdf" />
+              <small>Format gambar atau PDF. Data tersimpan di perangkat ini.</small>
+            </label>
+            <div class="payment-action-row-final payment-upload-actions">
+              <button class="primary-button" id="confirmPayment" type="button">Konfirmasi Pembayaran</button>
+              <button class="secondary-button" id="paymentHelp" type="button">Bantuan</button>
+            </div>
+            <div class="payment-result" id="confirmResult" hidden></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+
+
+    <div class="address-modal-backdrop" id="addressModal" hidden>
+      <div class="address-modal" role="dialog" aria-modal="true" aria-labelledby="addressModalTitle">
+        <button class="address-close" id="addressClose" type="button" aria-label="Tutup alamat">&times;</button>
+        <h2 id="addressModalTitle">Alamat Baru</h2>
+
+        <div class="address-input-row">
+          <input id="addressName" type="text" placeholder="Nama Lengkap" />
+          <input id="addressPhone" type="tel" placeholder="Nomor Telepon" />
+        </div>
+
+        <div class="address-search-field">
+          <input id="addressSearch" type="text" placeholder="Provinsi, Kota/Kabupaten, Kecamatan, Kode Pos" readonly />
+          <span class="address-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
+          </span>
+          <span class="address-caret" aria-hidden="true">⌄</span>
+        </div>
+
+        <div class="address-picker-box">
+          <div class="address-tabs" role="tablist" aria-label="Pilih alamat">
+            <button class="active" type="button" data-address-tab="province">Provinsi</button>
+            <button type="button" data-address-tab="city">Kota / Kabupaten</button>
+            <button type="button" data-address-tab="district">Kecamatan</button>
+            <button type="button" data-address-tab="postal">Kode Pos</button>
+          </div>
+          <div class="address-options" id="addressOptions"></div>
+        </div>
+
+        <label class="address-detail-label">
+          Tulis Alamat
+          <textarea id="addressStreet" rows="3" placeholder="Nama jalan, nomor rumah, RT/RW, patokan, atau detail lainnya"></textarea>
+        </label>
+
+        <div class="address-tag-row" role="group" aria-label="Label alamat">
+          <button class="address-tag active" type="button" data-address-tag="Rumah">Rumah</button>
+        </div>
+
+        <div class="address-modal-actions">
+          <button class="address-ok" id="addressOk" type="button">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="store-data.js"></script>
+    <script src="region-data.js"></script>
+    <script src="order-payment.js"></script>
+  </body>
+</html>

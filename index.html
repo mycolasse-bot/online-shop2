@@ -6,7 +6,7 @@
     <title>Online Shop - Fashion Wanita</title>
     <meta
       name="description"
-      content="Toko online fashion wanita bergaya marketplace dengan produk, cart, checkout, ekspedisi, pembayaran, dan admin produk."
+      content="Toko online fashion wanita bergaya marketplace dengan produk, cart, checkout, ekspedisi, pembayaran, dan Seller Center."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -119,7 +119,7 @@
           </div>
         </a>
         <div class="side-promos flash-card">
-          <div class="flash-head"><strong>🔥 Flash Sale</strong><a href="#flashsale">Lihat Semua</a></div>
+          <div class="flash-head"><strong>🔥 Flash Sale</strong><a href="#produk" data-flash-all="true">Lihat Semua</a></div>
           <div class="flash-timer"><b>02</b><span>:</span><b>35</b><span>:</span><b>47</b></div>
           <div class="flash-list">
             <a href="product.html?id=earbuds"><img src="assets/photos/electronics-2.png" alt="TWS Bluetooth Earbuds" /><span><b>TWS Bluetooth Earbuds</b><strong>Rp89.000</strong><del>Rp129.000</del></span><i>-31%</i></a>
@@ -131,7 +131,7 @@
 
       <section class="shortcut-row" aria-label="Menu promo">
         <a href="#produk">🛡️ Garansi 100% Original</a>
-        <a href="#flashsale">🚚 Gratis Ongkir</a>
+        <a href="#produk">🚚 Gratis Ongkir</a>
         <a href="#produk">↩️ 14 Hari Pengembalian</a>
         <a href="#produk">🎧 Layanan 24/7</a>
       </section>
@@ -141,14 +141,6 @@
           <h2 id="categoryTitle">Kategori Populer</h2>
         </div>
         <div class="category-grid" id="categoryGrid"></div>
-      </section>
-
-      <section class="panel-section" id="flashsale" aria-labelledby="flashTitle">
-        <div class="section-title-row">
-          <h2 id="flashTitle">Flash Sale</h2>
-          <span id="flashClock">00:00:00</span>
-        </div>
-        <div class="flash-strip" id="flashStrip"></div>
       </section>
 
       <section class="panel-section" id="produk" aria-labelledby="productTitle">
@@ -182,14 +174,15 @@
           <button class="close-button" id="buyerLoginClose" type="button" aria-label="Tutup login">&times;</button>
         </div>
         <div class="buyer-login-copy">
-          <strong>Masuk lebih cepat dengan Gmail</strong>
-          <span>Simpan alamat, pantau pesanan, dan checkout lebih praktis.</span>
+          <strong>Masuk dengan Email / Gmail</strong>
+          <span>Masukkan email dan password. Jika email belum terdaftar, sistem akan membuat akun pembeli baru.</span>
         </div>
         <form id="buyerLoginForm" class="login-box">
-          <label>Email Gmail<input type="email" name="email" placeholder="nama@gmail.com" required /></label>
-          <button class="primary-button full" type="submit">Lanjutkan dengan Gmail</button>
+          <label>Email / Gmail<input type="email" name="email" placeholder="nama@email.com" autocomplete="email" required /></label>
+          <label>Password<input type="password" name="password" placeholder="Minimal 6 karakter" minlength="6" autocomplete="current-password" required /></label>
+          <small>Email baru akan otomatis didaftarkan sebagai akun pembeli.</small>
+          <button class="primary-button full" type="submit">Masuk / Daftar</button>
         </form>
-        <button class="secondary-button full seller-login-entry" id="adminLoginOpen" type="button">Login Seller / Admin</button>
         <div id="buyerLoginResult" class="payment-result" hidden></div>
       </div>
     </aside>
@@ -197,26 +190,26 @@
     <aside class="drawer admin-drawer" id="adminDrawer" aria-hidden="true">
       <div class="drawer-panel admin-panel">
         <div class="drawer-head">
-          <h2>Admin Toko</h2>
-          <button class="close-button" id="adminClose" type="button" aria-label="Tutup admin">&times;</button>
+          <h2>Seller Center</h2>
+          <button class="close-button" id="adminClose" type="button" aria-label="Tutup Seller Center">&times;</button>
         </div>
 
         <form class="login-box" id="loginForm">
-          <p>Login admin demo</p>
+          <p>Login Seller Center demo</p>
           <label>
             Username
-            <input name="username" value="admin" required />
+            <input name="username" value="seller" required />
           </label>
           <label>
             Password
-            <input name="password" type="password" value="admin123" required />
+            <input name="password" type="password" value="seller123" required />
           </label>
           <button class="primary-button" type="submit">Login</button>
-          <small>Username: admin, Password: admin123</small>
+          <small>Username: seller, Password: seller123</small>
         </form>
 
         <div class="admin-content" id="adminContent" hidden>
-          <nav class="admin-sidebar" aria-label="Menu admin">
+          <nav class="admin-sidebar" aria-label="Menu Seller Center">
             <button class="active" type="button" data-admin-tab="products">Produk</button>
             <button type="button" data-admin-tab="discount">Discount</button>
             <button type="button" data-admin-tab="banner">Banner Promosi</button>

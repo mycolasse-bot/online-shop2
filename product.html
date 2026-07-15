@@ -6,7 +6,7 @@
     <title>Detail Produk - Online Shop</title>
     <meta
       name="description"
-      content="Detail produk fashion wanita dengan galeri foto, cart, checkout, ekspedisi, dan pembayaran."
+      content="Detail produk fashion wanita dengan galeri foto, cart, rincian pembelian, ekspedisi, dan pembayaran."
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -46,51 +46,8 @@
     </header>
 
     <main class="page-shell detail-page">
-      <section class="detail-panel" id="productDetail"></section>
+      <section class="detail-panel" id="productDetail"><div class="empty-state"><h2>Memuat halaman produk...</h2><p>Mohon tunggu sebentar.</p></div></section>
 
-      <section class="product-checkout" id="checkout">
-        <h2>Checkout Produk Ini</h2>
-        <form id="buyForm">
-          <div class="checkout-address-card">
-            <div class="address-card-head">
-              <div>
-                <strong>Alamat Pengiriman</strong>
-                <span>Isi data pembeli dan alamat lengkap sebelum bayar.</span>
-              </div>
-              <button class="address-edit-button" id="addressOpen" type="button">+ Alamat Baru</button>
-            </div>
-            <div class="address-preview empty" id="addressPreview">Belum ada alamat. Klik Alamat Baru untuk mengisi alamat pembeli.</div>
-          </div>
-
-          <input type="hidden" name="name" id="buyerNameField" />
-          <input type="hidden" name="phone" id="buyerPhoneField" />
-          <input type="hidden" name="street" id="buyerStreetField" />
-          <input type="hidden" name="district" id="buyerDistrictField" />
-          <input type="hidden" name="city" id="buyerCityField" />
-          <input type="hidden" name="province" id="buyerProvinceField" />
-          <input type="hidden" name="postal" id="buyerPostalField" />
-
-          <div class="form-row">
-            <label>
-              Pilih Ekspedisi
-              <select name="shipping" id="shippingSelect" required></select>
-            </label>
-            <label>
-              Metode Pembayaran
-              <select name="payment" id="paymentSelect" required></select>
-            </label>
-          </div>
-          <div class="form-row">
-            <label>
-              Nomor Pembayaran
-              <input id="paymentNumber" name="paymentNumber" readonly placeholder="Pilih metode pembayaran" />
-            </label>
-          </div>
-          <div class="payment-guide" id="paymentGuide"></div>
-          <button class="primary-button" type="submit">Buat Pesanan dan Bayar</button>
-          <div class="payment-result" id="paymentResult" hidden></div>
-        </form>
-      </section>
     </main>
 
     <aside class="drawer" id="cartDrawer" aria-hidden="true">
@@ -104,7 +61,7 @@
           <span>Total Produk</span>
           <strong id="cartSubtotal">Rp0</strong>
         </div>
-        <a class="primary-button full" href="#checkout" id="checkoutJump">Checkout Produk Ini</a>
+        <button class="primary-button full" id="checkoutJump" type="button">Rincian Pembelian Produk</button>
       </div>
     </aside>
 

@@ -7,7 +7,10 @@ const THEME_KEY = "fashion_theme";
 const SHIPPING_KEY = "fashion_shipping_v1";
 const PAYMENT_KEY = "fashion_payments_v1";
 const PROMO_KEY = "fashion_promo_v1";
+const HOME_SETTINGS_KEY = "fashion_home_settings_v1";
 const STORE_KEY = "fashion_store_profile_v1";
+const BUYER_ACCOUNTS_KEY = "fashion_buyer_accounts_v1";
+const BUYER_EMAIL_KEY = "fashion_buyer_email";
 
 const DEFAULT_PROMO = {
   eyebrow: "🔥 PROMO TERBATAS",
@@ -15,6 +18,18 @@ const DEFAULT_PROMO = {
   description: "Nikmati pengalaman mendengarkan musik tanpa batas dengan kualitas suara terbaik.",
   badge: "Rp199.000  •  Diskon 33%",
   mainImage: "assets/sample-product-real.jpg"
+};
+
+const DEFAULT_HOME_SETTINGS = {
+  shortcuts: ["🛡️ Garansi 100% Original", "🚚 Gratis Ongkir", "↩️ 14 Hari Pengembalian", "🎧 Layanan 24/7"],
+  categoryTitle: "Kategori Populer",
+  flashTitle: "🔥 Flash Sale",
+  flashStartDate: "",
+  flashEndDate: "",
+  promoProductId: "",
+  categoryProductIds: [],
+  flashProductIds: [],
+  flashSalePrices: []
 };
 
 const DEFAULT_STORE_PROFILE = {
@@ -50,6 +65,7 @@ const state = {
   shippingOptions: read(SHIPPING_KEY, DATA.shippingOptions),
   paymentMethods: read(PAYMENT_KEY, DATA.paymentMethods),
   promo: read(PROMO_KEY, DEFAULT_PROMO),
+  homeSettings: read(HOME_SETTINGS_KEY, DEFAULT_HOME_SETTINGS),
   storeProfile: read(STORE_KEY, DEFAULT_STORE_PROFILE),
   storeAddressDraft: {
     step: "province",
@@ -64,6 +80,7 @@ const state = {
   },
   selectedCategory: "Semua",
   search: new URLSearchParams(window.location.search).get("q") || "",
+  saleFilterOnly: false,
   admin: localStorage.getItem(ADMIN_KEY) === "true"
 };
 
@@ -99,7 +116,7 @@ const els = {
   checkoutForm: document.querySelector("#checkoutForm"),
   checkoutJump: document.querySelector("#checkoutJump"),
   clearOrders: document.querySelector("#clearOrders"),
-  flashClock: document.querySelector("#flashClock"),
+  flashClock: document.querySelector("#flashClock") || document.querySelector(".flash-card .flash-timer"),
   flashList: document.querySelector(".flash-list"),
   flashStrip: document.querySelector("#flashStrip"),
   loginForm: document.querySelector("#loginForm"),
@@ -249,7 +266,9 @@ function hydrateProduct(product) {
 }
 
 function loadProducts() {
-  return read(PRODUCTS_KEY, DATA.products).map(hydrateProduct);
+  const savedProducts = read(PRODUCTS_KEY, DATA.products);
+  const sourceProducts = Array.isArray(savedProducts) && savedProducts.length ? savedProducts : DATA.products;
+  return sourceProducts.map(hydrateProduct).filter(Boolean);
 }
 
 function saveProducts() {
@@ -283,6 +302,12 @@ function saveStoreProfile() {
 function finalPrice(product, variantName = "") {
   const basePrice = productVariantPrice(product, variantName);
   return Math.round(basePrice - basePrice * (Number(product.discount || 0) / 100));
+}
+
+function flashSalePriceFor(index) {
+  const prices = Array.isArray(state.homeSettings.flashSalePrices) ? state.homeSettings.flashSalePrices : [];
+  const price = Number(prices[index] || 0);
+  return Number.isFinite(price) && price > 0 ? price : 0;
 }
 
 function notify(message) {
@@ -400,7 +425,11 @@ function applyPromoImagePalette(imageUrl) {
 }
 
 function renderPromoBanner() {
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...state.homeSettings };
   const promo = { ...DEFAULT_PROMO, ...state.promo };
+  const promoLinkProduct = state.products.find((product) => product.id === state.homeSettings.promoProductId);
+  const hero = document.querySelector(".main-promo");
+  if (hero) hero.href = promoLinkProduct ? `product.html?id=${encodeURIComponent(promoLinkProduct.id)}` : "#produk";
   if (els.promoEyebrow) els.promoEyebrow.textContent = promo.eyebrow;
   if (els.promoTitle) els.promoTitle.textContent = promo.title;
   if (els.promoDescription) els.promoDescription.textContent = promo.description;
@@ -422,14 +451,25 @@ function renderHeroSlide(index) {
 }
 
 function renderCategories() {
-  els.categoryGrid.innerHTML = DATA.categories
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...state.homeSettings };
+  const categoryIds = Array.isArray(state.homeSettings.categoryProductIds) ? state.homeSettings.categoryProductIds : [];
+  const chosenProducts = categoryIds.map((id) => state.products.find((product) => product.id === id)).filter(Boolean);
+  const categoryItems = chosenProducts.length ? chosenProducts : DATA.categories;
+  els.categoryGrid.innerHTML = categoryItems
     .map(
-      (category) => `
-        <a class="category-item" href="#produk" data-category="${escapeHtml(category.name)}">
-          <img src="${category.image}" alt="${escapeHtml(category.name)}" />
-          <span>${escapeHtml(category.name)}</span>
-        </a>
-      `
+      (item) => {
+        const isProduct = Boolean(item.id);
+        const label = isProduct ? (item.category || item.title) : item.name;
+        const image = isProduct ? item.image : item.image;
+        const href = isProduct ? `product.html?id=${encodeURIComponent(item.id)}` : "#produk";
+        const extraAttr = isProduct ? "" : ` data-category="${escapeHtml(item.name)}"`;
+        return `
+          <a class="category-item" href="${href}"${extraAttr}>
+            <img src="${image}" alt="${escapeHtml(label)}" />
+            <span>${escapeHtml(label)}</span>
+          </a>
+        `;
+      }
     )
     .join("");
 
@@ -445,19 +485,41 @@ function renderCategories() {
     .join("");
 }
 
+function flashSaleProductMap() {
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...state.homeSettings };
+  const map = new Map();
+  if (!Array.isArray(state.homeSettings.flashProductIds)) return map;
+  state.homeSettings.flashProductIds.forEach((id, index) => {
+    if (!id) return;
+    map.set(id, flashSalePriceFor(index));
+  });
+  return map;
+}
+
+function isFlashOrDiscountProduct(product) {
+  const flashMap = flashSaleProductMap();
+  return flashMap.has(product.id) || Number(product.discount || 0) > 0;
+}
+
 function filteredProducts() {
   const search = state.search.trim().toLowerCase();
   return state.products.filter((product) => {
+    const saleMatch = !state.saleFilterOnly || isFlashOrDiscountProduct(product);
     const categoryMatch = state.selectedCategory === "Semua" || product.category === state.selectedCategory;
     const searchMatch =
       !search ||
       `${product.title} ${product.category} ${product.description}`.toLowerCase().includes(search);
-    return categoryMatch && searchMatch;
+    return saleMatch && categoryMatch && searchMatch;
   });
 }
 
-function productCard(product) {
-  const hasDiscount = Number(product.discount) > 0;
+function productCard(product, options = {}) {
+  const salePrice = Number(options.salePrice || 0);
+  const normalFinalPrice = finalPrice(product);
+  const displayPrice = salePrice > 0 ? salePrice : normalFinalPrice;
+  const hasDiscount = salePrice > 0 || Number(product.discount) > 0;
+  const oldPrice = salePrice > 0 ? normalFinalPrice : product.price;
+  const saleText = salePrice > 0 ? "FLASH" : `-${product.discount}%`;
   return `
     <article class="product-card">
       <a class="product-link" href="product.html?id=${encodeURIComponent(product.id)}">
@@ -465,10 +527,10 @@ function productCard(product) {
         <div class="product-body">
           <h3 class="product-title">${escapeHtml(product.title)}</h3>
           <div class="price-row">
-            <strong class="price">${rupiah.format(finalPrice(product))}</strong>
-            ${hasDiscount ? `<span class="sale-text">-${product.discount}%</span>` : ""}
+            <strong class="price">${rupiah.format(displayPrice)}</strong>
+            ${hasDiscount ? `<span class="sale-text">${saleText}</span>` : ""}
           </div>
-          ${hasDiscount ? `<span class="old-price">${rupiah.format(product.price)}</span>` : ""}
+          ${hasDiscount && oldPrice > displayPrice ? `<span class="old-price">${rupiah.format(oldPrice)}</span>` : ""}
           <div class="sold-row">
             <span>${product.rating} ★</span>
             <span>Terjual ${product.sold}</span>
@@ -481,27 +543,38 @@ function productCard(product) {
 
 function renderProducts() {
   const products = filteredProducts();
+  const flashMap = flashSaleProductMap();
   els.productGrid.innerHTML = products.length
-    ? products.map(productCard).join("")
+    ? products.map((product) => productCard(product, { salePrice: flashMap.get(product.id) || 0 })).join("")
     : `<p class="empty-text">Produk tidak ditemukan.</p>`;
 }
 
 function renderSideFlashList() {
   if (!els.flashList) return;
 
-  const products = state.products.slice(0, 3);
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...state.homeSettings };
+  const configured = Array.isArray(state.homeSettings.flashProductIds)
+    ? state.homeSettings.flashProductIds
+        .map((id, index) => ({ product: state.products.find((item) => item.id === id), salePrice: flashSalePriceFor(index) }))
+        .filter((entry) => entry.product)
+    : [];
+  const products = configured.length
+    ? configured
+    : state.products.slice(0, 3).map((product) => ({ product, salePrice: 0 }));
   els.flashList.innerHTML = products
-    .map((product) => {
+    .map(({ product, salePrice }) => {
       const discount = Number(product.discount || 0);
-      const hasDiscount = discount > 0;
-      const badge = hasDiscount ? `-${discount}%` : "BARU";
+      const displayPrice = salePrice > 0 ? salePrice : finalPrice(product);
+      const oldPrice = salePrice > 0 ? finalPrice(product) : product.price;
+      const hasDiscount = salePrice > 0 || discount > 0;
+      const badge = salePrice > 0 ? "FLASH" : (hasDiscount ? `-${discount}%` : "BARU");
       return `
         <a class="flash-item" href="product.html?id=${encodeURIComponent(product.id)}">
           <img src="${product.image}" alt="${escapeHtml(product.title)}" />
           <span>
             <b>${escapeHtml(product.title)}</b>
-            <strong>${rupiah.format(finalPrice(product))}</strong>
-            ${hasDiscount ? `<del>${rupiah.format(product.price)}</del>` : ""}
+            <strong>${rupiah.format(displayPrice)}</strong>
+            ${hasDiscount && oldPrice > displayPrice ? `<del>${rupiah.format(oldPrice)}</del>` : ""}
           </span>
           <i>${badge}</i>
         </a>
@@ -511,8 +584,17 @@ function renderSideFlashList() {
 }
 
 function renderFlashSale() {
-  const saleProducts = state.products.filter((product) => Number(product.discount) > 0);
-  els.flashStrip.innerHTML = saleProducts.map(productCard).join("");
+  if (!els.flashStrip) return;
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...state.homeSettings };
+  const configured = Array.isArray(state.homeSettings.flashProductIds)
+    ? state.homeSettings.flashProductIds
+        .map((id, index) => ({ product: state.products.find((item) => item.id === id), salePrice: flashSalePriceFor(index) }))
+        .filter((entry) => entry.product)
+    : [];
+  const saleProducts = configured.length
+    ? configured
+    : state.products.filter((product) => Number(product.discount) > 0).map((product) => ({ product, salePrice: 0 }));
+  els.flashStrip.innerHTML = saleProducts.map(({ product, salePrice }) => productCard(product, { salePrice })).join("");
 }
 
 function findProduct(id) {
@@ -1051,8 +1133,69 @@ function renderOrderFilters() {
   els.orderFilterYear.value = currentYear;
 }
 
+
+function formatFlashPeriod(startDate, endDate) {
+  const formatDate = (value) => {
+    if (!value) return "";
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+  };
+  const start = formatDate(startDate);
+  const end = formatDate(endDate);
+  if (start && end) return `Periode: ${start} - ${end}`;
+  if (start) return `Mulai: ${start}`;
+  if (end) return `Sampai: ${end}`;
+  return "";
+}
+
+function renderFlashPeriodLabel() {
+  const periodText = formatFlashPeriod(state.homeSettings.flashStartDate, state.homeSettings.flashEndDate);
+  document.querySelectorAll("[data-flash-period]").forEach((node) => node.remove());
+  if (!periodText) return;
+  const sideTimer = document.querySelector(".flash-card .flash-timer");
+  if (sideTimer) {
+    const label = document.createElement("div");
+    label.className = "flash-period-label";
+    label.dataset.flashPeriod = "side";
+    label.textContent = periodText;
+    sideTimer.insertAdjacentElement("afterend", label);
+  }
+  const sectionHead = document.querySelector("#flashsale .section-head");
+  if (sectionHead) {
+    const label = document.createElement("span");
+    label.className = "flash-period-label section-period";
+    label.dataset.flashPeriod = "section";
+    label.textContent = periodText;
+    sectionHead.appendChild(label);
+  }
+}
+
+function renderHomeDisplaySettings() {
+  state.homeSettings = { ...DEFAULT_HOME_SETTINGS, ...read(HOME_SETTINGS_KEY, state.homeSettings || DEFAULT_HOME_SETTINGS) };
+  const shortcuts = Array.isArray(state.homeSettings.shortcuts) && state.homeSettings.shortcuts.length
+    ? state.homeSettings.shortcuts.slice(0, 4)
+    : DEFAULT_HOME_SETTINGS.shortcuts.slice();
+  while (shortcuts.length < 4) shortcuts.push(DEFAULT_HOME_SETTINGS.shortcuts[shortcuts.length]);
+  document.querySelectorAll(".shortcut-row a").forEach((link, index) => {
+    link.textContent = shortcuts[index] || DEFAULT_HOME_SETTINGS.shortcuts[index] || "";
+  });
+  if (document.querySelector("#categoryTitle")) document.querySelector("#categoryTitle").textContent = state.homeSettings.categoryTitle || DEFAULT_HOME_SETTINGS.categoryTitle;
+  if (document.querySelector("#flashTitle")) document.querySelector("#flashTitle").textContent = state.homeSettings.flashTitle || DEFAULT_HOME_SETTINGS.flashTitle;
+  const flashHead = document.querySelector(".flash-head strong");
+  if (flashHead) flashHead.textContent = state.homeSettings.flashTitle || DEFAULT_HOME_SETTINGS.flashTitle;
+  const flashAllLink = document.querySelector(".flash-head a");
+  if (flashAllLink) {
+    flashAllLink.href = "#produk";
+    flashAllLink.dataset.flashAll = "true";
+  }
+  renderFlashPeriodLabel();
+}
+
 function renderAll() {
+  state.promo = read(PROMO_KEY, state.promo || DEFAULT_PROMO);
   renderPromoBanner();
+  renderHomeDisplaySettings();
   renderSelectOptions();
   renderCategories();
   renderProducts();
@@ -1092,20 +1235,60 @@ document.querySelector("#adminLoginOpen")?.addEventListener("click", () => {
 els.checkoutJump.addEventListener("click", () => closeDrawer(els.cartDrawer));
 els.buyerLoginOpen?.addEventListener("click", () => openDrawer(els.buyerLoginDrawer));
 els.buyerLoginClose?.addEventListener("click", () => closeDrawer(els.buyerLoginDrawer));
+function encodeBuyerPassword(password) {
+  try {
+    return btoa(unescape(encodeURIComponent(password)));
+  } catch (error) {
+    return password;
+  }
+}
+
 els.buyerLoginForm?.addEventListener("submit", (event) => {
   event.preventDefault();
-  const email = new FormData(event.currentTarget).get("email").trim().toLowerCase();
-  if (!email.endsWith("@gmail.com")) {
+  const form = new FormData(event.currentTarget);
+  const email = String(form.get("email") || "").trim().toLowerCase();
+  const password = String(form.get("password") || "").trim();
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  if (!validEmail) {
     els.buyerLoginResult.hidden = false;
-    els.buyerLoginResult.textContent = "Gunakan alamat Gmail yang valid, contoh: nama@gmail.com.";
+    els.buyerLoginResult.textContent = "Masukkan alamat email yang valid, contoh: nama@gmail.com.";
     return;
   }
-  localStorage.setItem("fashion_buyer_email", email);
+
+  if (password.length < 6) {
+    els.buyerLoginResult.hidden = false;
+    els.buyerLoginResult.textContent = "Password minimal 6 karakter.";
+    return;
+  }
+
+  const accounts = read(BUYER_ACCOUNTS_KEY, {});
+  const encodedPassword = encodeBuyerPassword(password);
+  const registeredAccount = accounts[email];
+
+  if (registeredAccount && registeredAccount.password !== encodedPassword) {
+    els.buyerLoginResult.hidden = false;
+    els.buyerLoginResult.textContent = "Password salah. Coba lagi atau gunakan email lain untuk daftar akun baru.";
+    return;
+  }
+
+  if (!registeredAccount) {
+    accounts[email] = {
+      email,
+      password: encodedPassword,
+      createdAt: new Date().toISOString()
+    };
+    write(BUYER_ACCOUNTS_KEY, accounts);
+  }
+
+  localStorage.setItem(BUYER_EMAIL_KEY, email);
   els.buyerLoginResult.hidden = false;
-  els.buyerLoginResult.textContent = `Login berhasil sebagai ${email}. Data checkout akan tersimpan di perangkat ini.`;
+  els.buyerLoginResult.textContent = registeredAccount
+    ? `Login berhasil sebagai ${email}. Data checkout akan tersimpan di perangkat ini.`
+    : `Akun pembeli berhasil dibuat untuk ${email}. Kamu sudah login.`;
   const accountLabel = els.buyerLoginOpen?.querySelector(".nav-label");
   if (accountLabel) accountLabel.textContent = "Akun Saya";
-  notify("Login Gmail berhasil.");
+  notify(registeredAccount ? "Login pembeli berhasil." : "Akun pembeli berhasil dibuat.");
 });
 
 document.addEventListener("click", (event) => {
@@ -1125,6 +1308,19 @@ document.addEventListener("click", (event) => {
   const storeAddressOpen = event.target.closest("#storeAddressOpen");
   const storeAddressClose = event.target.closest("#storeAddressClose");
   const storeAddressOk = event.target.closest("#storeAddressOk");
+  const flashAll = event.target.closest("[data-flash-all]");
+
+  if (flashAll) {
+    event.preventDefault();
+    state.saleFilterOnly = true;
+    state.selectedCategory = "Semua";
+    state.search = "";
+    if (els.searchInput) els.searchInput.value = "";
+    renderCategories();
+    renderProducts();
+    document.querySelector("#produk")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
 
   if (storeAddressOpen) openStoreAddressModal();
   if (storeAddressClose) closeStoreAddressModal();
@@ -1138,6 +1334,7 @@ document.addEventListener("click", (event) => {
   if (minusButton) updateCart(minusButton.dataset.minus, "minus");
   if (removeButton) updateCart(removeButton.dataset.remove, "remove");
   if (category) {
+    state.saleFilterOnly = false;
     state.selectedCategory = category.dataset.category;
     renderCategories();
     renderProducts();
@@ -1189,6 +1386,7 @@ document.addEventListener("click", (event) => {
 els.categoryFilters.addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");
   if (!button) return;
+  state.saleFilterOnly = false;
   state.selectedCategory = button.dataset.filter;
   renderCategories();
   renderProducts();
@@ -1196,6 +1394,7 @@ els.categoryFilters.addEventListener("click", (event) => {
 
 els.searchForm.addEventListener("submit", (event) => {
   event.preventDefault();
+  state.saleFilterOnly = false;
   state.search = els.searchInput.value;
   renderProducts();
   document.querySelector("#produk").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1214,6 +1413,7 @@ document.querySelector(".quick-links")?.addEventListener("click", (event) => {
 
   if (!button) return;
   els.searchInput.value = button.dataset.search;
+  state.saleFilterOnly = false;
   state.search = button.dataset.search;
   renderProducts();
   quickLinks.classList.remove("open");
@@ -1250,7 +1450,7 @@ if (els.checkoutForm) {
     renderAll();
     els.paymentResult.hidden = false;
     els.paymentResult.textContent = paymentText(order);
-    notify("Pesanan masuk ke admin.");
+    notify("Pesanan masuk ke Seller Center.");
   });
 }
 
@@ -1312,11 +1512,11 @@ if (els.variantRowList) {
 els.loginForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  if (form.get("username") === "admin" && form.get("password") === "admin123") {
+  if (form.get("username") === "seller" && form.get("password") === "seller123") {
     state.admin = true;
     localStorage.setItem(ADMIN_KEY, "true");
     renderAdmin();
-    notify("Admin berhasil login.");
+    notify("Seller Center berhasil login.");
   } else {
     notify("Username atau password salah.");
   }
@@ -1534,19 +1734,70 @@ els.clearOrders.addEventListener("click", () => {
   filter?.addEventListener("change", () => renderAdmin());
 });
 
+function setFlashClockContent(status, values = []) {
+  if (!els.flashClock) return;
+  els.flashClock.classList.toggle("flash-timer-status", Boolean(status));
+  if (status) {
+    els.flashClock.textContent = status;
+    return;
+  }
+  els.flashClock.innerHTML = values
+    .map((item, index) => item.type === "number"
+      ? `<b>${item.value}</b>`
+      : `<span>${item.value}</span>`)
+    .join("");
+}
+
 function runClock() {
+  if (!els.flashClock) return;
   const now = new Date();
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
+  const homeSettings = { ...DEFAULT_HOME_SETTINGS, ...read(HOME_SETTINGS_KEY, state.homeSettings || DEFAULT_HOME_SETTINGS) };
+  const start = homeSettings.flashStartDate ? new Date(`${homeSettings.flashStartDate}T00:00:00`) : null;
+  const periodEnd = homeSettings.flashEndDate ? new Date(`${homeSettings.flashEndDate}T23:59:59.999`) : null;
+
+  if (start && !Number.isNaN(start.getTime()) && now < start) {
+    setFlashClockContent("Belum Mulai");
+    return;
+  }
+
+  if (periodEnd && !Number.isNaN(periodEnd.getTime()) && now > periodEnd) {
+    setFlashClockContent("Berakhir");
+    return;
+  }
+
+  const end = periodEnd && !Number.isNaN(periodEnd.getTime()) ? periodEnd : new Date();
+  if (!periodEnd || Number.isNaN(periodEnd.getTime())) end.setHours(23, 59, 59, 999);
+
   const diff = Math.max(0, end - now);
-  const hours = String(Math.floor(diff / 3600000)).padStart(2, "0");
+  const totalHours = Math.floor(diff / 3600000);
+
+  if (diff > 86400000) {
+    const days = String(Math.floor(diff / 86400000)).padStart(2, "0");
+    const hours = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, "0");
+    setFlashClockContent("", [
+      { type: "number", value: days },
+      { type: "label", value: "Hari" },
+      { type: "label", value: ":" },
+      { type: "number", value: hours },
+      { type: "label", value: "Jam" }
+    ]);
+    return;
+  }
+
+  const hours = String(totalHours).padStart(2, "0");
   const minutes = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
   const seconds = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
-  els.flashClock.textContent = `${hours}:${minutes}:${seconds}`;
+  setFlashClockContent("", [
+    { type: "number", value: hours },
+    { type: "label", value: ":" },
+    { type: "number", value: minutes },
+    { type: "label", value: ":" },
+    { type: "number", value: seconds }
+  ]);
 }
 
 els.searchInput.value = state.search;
-const buyerEmail = localStorage.getItem("fashion_buyer_email");
+const buyerEmail = localStorage.getItem(BUYER_EMAIL_KEY);
 if (buyerEmail && els.buyerLoginOpen) {
   const accountLabel = els.buyerLoginOpen.querySelector(".nav-label");
   if (accountLabel) accountLabel.textContent = "Akun Saya";
@@ -1567,6 +1818,11 @@ window.addEventListener("storage", (event) => {
   }
   if (event.key === PRODUCTS_KEY) {
     state.products = loadProducts();
+    renderAll();
+  }
+  if (event.key === PROMO_KEY || event.key === HOME_SETTINGS_KEY) {
+    state.promo = read(PROMO_KEY, state.promo || DEFAULT_PROMO);
+    state.homeSettings = read(HOME_SETTINGS_KEY, state.homeSettings || DEFAULT_HOME_SETTINGS);
     renderAll();
   }
 });
